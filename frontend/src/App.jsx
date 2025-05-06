@@ -47,16 +47,16 @@ export default function App() {
   // ===== initial load =====
   useEffect(() => {
     loadDirectory("/root/PIdisk");
-    // подтягиваем текущие настройки
-    invoke("get_settings").then((cfg) => {
-      setHost(cfg.host);
-      setPort(String(cfg.port));
-      setUsername(cfg.username);
-      setPassword(cfg.password);
-      setRootDir(cfg.root_dir);
-      setTrashDir(cfg.trash_dir);
-    });
+    invoke("get_settings")
+      .then(cfg => {
+        setHost(cfg.host);
+        setPort(cfg.port);
+        setUsername(cfg.username);
+        setPassword(cfg.password);
+      })
+      .catch(e => setError(String(e)));
   }, []);
+
 
   // ===== cd + ls =====
   async function loadDirectory(dir) {
@@ -157,24 +157,26 @@ export default function App() {
   const handleCloseSettings = () => setOpenSettings(false);
   const handleSettingsSave  = async () => {
     try {
-      await invoke("update_settings", {
-        host,
-        port:     parseInt(port,  10),
-        username,
-        password,
-        root_dir: rootDir,
-        trash_dir: trashDir,
-      });
-      // после смены путей — перезагрузим в новый root_dir
-      await loadDirectory(rootDir);
-    } catch (e) {
-      console.error("Settings save error:", e);
-      setError(String(e));
-    } finally {
-      handleCloseSettings();
-    }
-  };
-
+          await invoke("update_settings", {
+            host,
+            port,
+            username,
+            password,
+            root_dir: rootDir,
+          trash_dir: trashDir,
+        });
+        // Всё ок — закрываем диалог и переходим в новый root
+        handleCloseSettings();
+        await loadDirectory(rootDir);
+      } catch (e) {
+        // Ошибка от бекенда уже содержит «Неверные данные...» или другую
+        const msg = String(e).includes("Неверные данные")
+          ? "Неверные данные для подключения"
+          : String(e);
+        setError(msg);
+        // не закрываем окно, чтобы пользователь мог исправить
+      }
+  }
   function onPlusClick() {
     fileInputRef.current?.click();
   }
@@ -243,16 +245,13 @@ export default function App() {
       </AppBar>
   
       {/* SETTINGS DIALOG */}
-      <Dialog open={openSettings} onClose={handleCloseSettings} maxWidth="sm" fullWidth>
-        <DialogTitle>Настройки подключения</DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-          {/* поля для host, port, username, password, rootDir, trashDir */}
-          <TextField label="IP-адрес"       value={host}     onChange={e => setHost(e.target.value)}       fullWidth />
-          <TextField label="Порт"           value={port}     onChange={e => setPort(e.target.value)}       fullWidth type="number" />
-          <TextField label="Пользователь"   value={username} onChange={e => setUsername(e.target.value)} fullWidth />
-          <TextField label="Пароль"         value={password} onChange={e => setPassword(e.target.value)} fullWidth type="password" />
-          <TextField label="Корневой каталог" value={rootDir} onChange={e => setRootDir(e.target.value)}  fullWidth />
-          <TextField label="Путь к корзине"   value={trashDir} onChange={e => setTrashDir(e.target.value)} fullWidth />
+      <Dialog open={openSettings} onClose={handleCloseSettings} maxWidth="xs" fullWidth>
+        <DialogTitle>Настройки</DialogTitle>
+        <DialogContent sx={{display:"flex",flexDirection:"column",gap:2,pt:1}}>
+          <TextField label="IP-адрес"     value={host}     onChange={e=>setHost(e.target.value)}     fullWidth/>
+          <TextField label="Порт"         value={port}     onChange={e=>setPort(+e.target.value)}     fullWidth type="number"/>
+          <TextField label="Пользователь" value={username} onChange={e=>setUsername(e.target.value)} fullWidth/>
+          <TextField label="Пароль"       value={password} onChange={e=>setPassword(e.target.value)} fullWidth type="password"/>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseSettings}>Отмена</Button>

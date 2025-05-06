@@ -90,16 +90,29 @@ fn update_settings(
   port: u16,
   username: String,
   password: String,
-  root_dir: String,
-  trash_dir: String,
 ) -> Result<(), String> {
-  let mut cfg = SETTINGS.lock().unwrap();
-  *cfg = Settings { host, port, username, password, root_dir: root_dir.clone(), trash_dir };
-  // пересоздаём сессию
-  let new_sess = create_session(&cfg)?;
-  *SSH_SESSION.lock().unwrap() = Some(new_sess);
-  // обновляем текущую директорию стартовой
-  *CURRENT_DIR.lock().unwrap() = root_dir;
+  // 1) пробуем подключиться по новым данным
+  let mut trial = SETTINGS.lock().unwrap().clone();
+  trial.host = host.clone();
+  trial.port = port;
+  trial.username = username.clone();
+  trial.password = password.clone();
+  let sess = create_session(&trial)
+    .map_err(|e| format!("Неверные данные для подключения: {}", e))?;
+  // 2) записываем их в SETTINGS
+  {
+    let mut cfg = SETTINGS.lock().unwrap();
+    cfg.host = host;
+    cfg.port = port;
+    cfg.username = username;
+    cfg.password = password;
+    // root_dir и trash_dir остаются прежними
+  }
+  // 3) меняем сессию
+  *SSH_SESSION.lock().unwrap() = Some(sess);
+  // 4) сбрасываем cwd на старый root_dir
+  let root = SETTINGS.lock().unwrap().root_dir.clone();
+  *CURRENT_DIR.lock().unwrap() = root;
   Ok(())
 }
 

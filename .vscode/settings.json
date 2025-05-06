@@ -1,0 +1,13 @@
+// .vscode/settings.json
+{
+    // чтобы VSCode не ругался на @tailwind, @apply и прочие
+    "css.lint.unknownAtRules": "ignore",
+    "scss.lint.unknownAtRules": "ignore",
+    "less.lint.unknownAtRules": "ignore",
+  
+    // если хочешь вообще отключить встроенную валидацию
+    //"css.validate": false,
+    //"scss.validate": false,
+    //"less.validate": false
+  }
+  

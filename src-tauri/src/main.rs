@@ -241,12 +241,34 @@ fn upload_file(local_path: String) -> Result<(), String> {
   })
 }
 
+#[command]
+fn rename(old: String, new: String) -> Result<(), String> {
+  // берём текущий рабочий каталог
+  let cwd = CURRENT_DIR.lock().unwrap().clone();
+  // формируем команду mv
+  let cmd = format!(
+    "sh -lc \"cd '{}' && mv '{}' '{}'\"",
+    cwd, old, new
+  );
+
+  // выполняем её в рамках SSH-сессии
+  with_session(|sess| {
+    let mut ch = sess.channel_session().map_err(|e| e.to_string())?;
+    ch.exec(&cmd).map_err(|e| e.to_string())?;
+    ch.close().map_err(|e| e.to_string())?;
+    ch.wait_close().map_err(|e| e.to_string())?;
+    Ok(())
+  })
+}
+
+
 fn main() {
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![
       get_settings,
       update_settings,
       read_dir,
+      rename,
       mkdir,
       mv,
       rm,

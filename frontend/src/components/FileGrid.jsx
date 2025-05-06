@@ -1,6 +1,7 @@
-import React from "react";
+// src/components/FileGrid.jsx
+import React, { useRef, useEffect } from "react";
 import { Grid, Paper, Typography, TextField, Box } from "@mui/material";
-import FolderIcon          from "@mui/icons-material/Folder";
+import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
 export default function FileGrid({
@@ -12,6 +13,16 @@ export default function FileGrid({
   onRenameChange,
   onRenameConfirm,
 }) {
+  const inputRef = useRef(null);
+
+  // при старте редактирования — автофокус и выделение всего текста
+  useEffect(() => {
+    if (renameTarget && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [renameTarget]);
+
   return (
     <Grid container spacing={2}>
       {items.map((name) => {
@@ -36,18 +47,23 @@ export default function FileGrid({
             >
               {renameTarget === name ? (
                 <TextField
+                  inputRef={inputRef}
                   value={renameValue}
                   onChange={(e) => onRenameChange(e.target.value)}
-                  onBlur={onRenameConfirm}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") onRenameConfirm();
-                    else if (e.key === "Escape") {
+                    if (e.key === "Enter") {
+                      onRenameConfirm();
+                    } else if (e.key === "Escape") {
                       onRenameChange(name);
                       onRenameConfirm();
                     }
                   }}
+                  onBlur={() => {
+                    // откладываем confirm в следующий тик,
+                    // чтобы React успел записать последние onChange
+                    setTimeout(onRenameConfirm, 0);
+                  }}
                   size="small"
-                  autoFocus
                   fullWidth
                   variant="standard"
                 />

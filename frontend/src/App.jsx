@@ -110,17 +110,29 @@ export default function App() {
   };
 
   const handleRenameConfirm = async () => {
-    if (!renameTarget) return;
-    const oldName = renameTarget;
-    const newName = renameValue.trim();
-    if (newName && newName !== oldName) {
-      await invoke("rename", { old: oldName, new: newName });
-      await loadDirectory(currentPath);
-      setCreatedFolder({ parentPath: currentPath, oldName, newName });
-    }
-    setRenameTarget(null);
-    setRenameValue("");
-  };
+       if (!renameTarget) return;
+       const oldName = renameTarget;
+       const newName = renameValue.trim();
+    
+       // сначала прячем инпут, чтобы он больше не рисовался
+       setRenameTarget(null);
+       setRenameValue("");
+    
+       // если имя действительно поменялось — шлём команду
+       if (newName && newName !== oldName) {
+         try {
+           await invoke("rename", { old: oldName, new: newName });
+           // чтобы обновилось дерево слева, если нужно
+           setCreatedFolder({ parentPath: currentPath, oldName, newName });
+         } catch (e) {
+           console.error("rename error:", e);
+           setError(String(e));
+         }
+       }
+    
+       // всегда обновляем файллист правой панели
+       await loadDirectory(currentPath);
+     };
 
   const handleNewFolder = async () => {
     handleClose();
@@ -287,9 +299,7 @@ export default function App() {
           {error && <Box color="error.main" mb={1}>{error}</Box>}
           <FileGrid
             items={files}
-            onDoubleClick={name => {
-              if (!/\.[^/.]+$/.test(name)) handleOpen(name);
-            }}
+            onDoubleClick={handleOpen}
             onContextMenu={onFileContext}
             renameTarget={renameTarget}
             renameValue={renameValue}

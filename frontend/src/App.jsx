@@ -43,6 +43,7 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [rootDir,  setRootDir]  = useState("");
   const [trashDir, setTrashDir] = useState("");
+  const [trashCleared, setTrashCleared] = useState(false);
 
   // ===== initial load =====
   useEffect(() => {
@@ -53,6 +54,7 @@ export default function App() {
         setPort(cfg.port);
         setUsername(cfg.username);
         setPassword(cfg.password);
+        setTrashDir(cfg.trash_dir);
       })
       .catch(e => setError(String(e)));
   }, []);
@@ -201,17 +203,17 @@ export default function App() {
   }
 
   async function handleClearAll() {
-    if (!window.confirm("Вы действительно хотите очистить корзину?")) return;
+    console.log("🔔 handleClearAll вызван, очищаем корзину:", currentPath);
     try {
       await invoke("clear_all");
-      // после очистки — перезагрузим ту же папку (она же trashDir)
+    // после очистки — перезагрузим корзину
       await loadDirectory(currentPath);
+      setTrashCleared(true);  
     } catch (e) {
-      console.error(e);
+      console.error("clear_all error:", e);
       setError(String(e));
     }
-  }
-  
+    }
 
   return (
     <Box display="flex" flexDirection="column" height="100vh" width="100vw">
@@ -282,6 +284,9 @@ export default function App() {
               onFolderCreated={() => setCreatedFolder(null)}
               deletedItem={deletedItem}
               onItemDeleted={() => setDeletedItem(null)}
+              trashDir={trashDir}
+              trashCleared={trashCleared}
+              onTrashCleared={() => setTrashCleared(false)}
             />
           </Box>
           <Box p={1} borderTop={1} borderColor="divider">

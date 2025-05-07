@@ -29,8 +29,11 @@ export default function FolderTree({
   onDropFile,
   createdFolder,
   onFolderCreated,
-  deletedItem,     // ← обязательно!
-  onItemDeleted,   // ← и этот
+  deletedItem,     
+  onItemDeleted,
+  trashDir,
+  trashCleared,
+  onTrashCleared,   
 }) {
   const ROOT = "/root/PIdisk";
   const [tree, setTree] = useState([
@@ -111,6 +114,18 @@ export default function FolderTree({
     }
     onItemDeleted();
   }, [deletedItem, onItemDeleted, tree]);
+
+  useEffect(() => {
+    if (!trashCleared) return;
+    // найдём узел корзины
+    const node = findNode(tree, trashDir);
+    if (node && node.isFolder) {
+      node.children = [];      // сброс
+      node.open = true;        // оставить раскрытой
+    setTree([...tree]);
+    }
+    onTrashCleared();
+    }, [trashCleared, trashDir, tree, onTrashCleared]);
 
   // Клик раскрыть / свернуть
   const toggle = async (node) => {

@@ -11,8 +11,7 @@ use std::io::Read;
 use std::net::TcpStream;
 use std::sync::Mutex;
 use tauri::command;
-use std::path::Path;
-use std::fs::File;
+
 
 /// SSH-настройки + корень и корзина
 #[derive(Serialize, Deserialize, Clone)]
@@ -204,11 +203,12 @@ fn rm(target: String) -> Result<(), String> {
 /// clear_all внутри trash_dir
 #[command]
 fn clear_all() -> Result<(), String> {
+  let trash = SETTINGS.lock().unwrap().trash_dir.clone();
+  println!("➤ clear_all called, trash_dir = {}", trash);
   with_session(|sess| {
-    let trash = SETTINGS.lock().unwrap().trash_dir.clone();
     let mut ch = sess.channel_session().map_err(|e| e.to_string())?;
-    ch.exec(&format!("sh -lc \"cd '{}' && rm -rf ./*\"", trash))
-      .map_err(|e| e.to_string())?;
+    let cmd = format!("cd '{}' && rm -rf ./*", trash);
+    ch.exec(&cmd).map_err(|e| e.to_string())?;
     ch.close().map_err(|e| e.to_string())?;
     ch.wait_close().map_err(|e| e.to_string())?;
     Ok(())

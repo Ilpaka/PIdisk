@@ -13,6 +13,8 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@heroicons/react": "^2.2.0",
+    "@iconify-icons/mdi": "^1.2.48",
+    "@iconify/react": "^6.0.0",
     "@mui/icons-material": "^7.0.2",
     "@mui/material": "^7.0.2",
     "@tauri-apps/api": "^2.5.0",

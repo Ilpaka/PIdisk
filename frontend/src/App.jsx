@@ -155,45 +155,49 @@ export default function App() {
   // ===== settings dialog handlers =====
   const handleOpenSettings  = () => setOpenSettings(true);
   const handleCloseSettings = () => setOpenSettings(false);
-  const handleSettingsSave  = async () => {
-    try {
-          await invoke("update_settings", {
-            host,
-            port,
-            username,
-            password,
-            root_dir: rootDir,
-          trash_dir: trashDir,
-        });
-        // Всё ок — закрываем диалог и переходим в новый root
-        handleCloseSettings();
-        await loadDirectory(rootDir);
-      } catch (e) {
-        // Ошибка от бекенда уже содержит «Неверные данные...» или другую
-        const msg = String(e).includes("Неверные данные")
-          ? "Неверные данные для подключения"
-          : String(e);
-        setError(msg);
-        // не закрываем окно, чтобы пользователь мог исправить
-      }
-  }
-  function onPlusClick() {
-    fileInputRef.current?.click();
-  }
 
-  async function onFileChange(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleSettingsSave = async () => {
     try {
-      // передаём именно local_path, а не localPath
-      await invoke("upload_file", { localPath: file.path });
+      // передаём только четыре параметра
+      await invoke("update_settings", {
+        host,
+        port,
+        username,
+        password,
+      });
+      setOpenSettings(false);
       await loadDirectory(currentPath);
-    } catch (err) {
-      console.error(err);
-      setError(String(err));
-    } finally {
-      e.target.value = "";
+    } catch (e) {
+      setError(
+        String(e).includes("Неверные данные")
+          ? "Неверные данные для подключения"
+          : String(e)
+      );
     }
+  };
+  
+  const handleUploadClick = async () => {
+    // создаём скрытый input «на лету»
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        // читаем содержимое
+        const buf = await file.arrayBuffer();
+        const bytes = Array.from(new Uint8Array(buf));
+        await invoke("upload_file", {
+          filename: file.name,
+          data: bytes,
+        });
+        await loadDirectory(currentPath);
+      } catch (err) {
+        console.error("upload error:", err);
+        setError(String(err));
+      }
+    };
+    inp.click();
   }
 
   async function handleClearAll() {
@@ -229,17 +233,9 @@ export default function App() {
             )}
   
             {/* Кнопка загрузки файла */}
-            <IconButton size="small" color="inherit" onClick={onPlusClick}>
+            <IconButton size="small" onClick={handleUploadClick}>
               <AddIcon />
             </IconButton>
-  
-            {/* Скрытый input для выбора файла */}
-            <input
-              type="file"
-              ref={fileInputRef}
-              style={{ display: "none" }}
-              onChange={onFileChange}
-            />
           </Box>
         </Toolbar>
       </AppBar>

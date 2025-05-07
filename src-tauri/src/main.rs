@@ -230,26 +230,19 @@ fn df() -> Result<String, String> {
 }
 
 #[command]
-fn upload_file(local_path: String) -> Result<(), String> {
-  // открываем локальный файл
-  let mut file = File::open(&local_path).map_err(|e| e.to_string())?;
-  let metadata = file.metadata().map_err(|e| e.to_string())?;
-  let size = metadata.len();
-  // получаем имя файла из пути
-  let filename = Path::new(&local_path)
-    .file_name()
-    .and_then(|n| n.to_str())
-    .ok_or_else(|| "Неверное имя файла".to_string())?;
-  // формируем полный удалённый путь
+fn upload_file(filename: String, data: Vec<u8>) -> Result<(), String> {
+  // 1) определяем, куда сохраняем
   let cwd = CURRENT_DIR.lock().unwrap().clone();
-  let remote_path = format!("{}/{}", cwd, filename);
+  let remote_path = std::path::Path::new(&cwd).join(&filename);
 
-  // делаем SCP
+  // 2) через SCP отправляем байты
   with_session(|sess| {
+    let size = data.len() as u64;
     let mut remote = sess
-      .scp_send(Path::new(&remote_path), 0o644, size, None)
+      .scp_send(&remote_path, 0o644, size, None)
       .map_err(|e| e.to_string())?;
-    std::io::copy(&mut file, &mut remote).map_err(|e| e.to_string())?;
+    std::io::Write::write_all(&mut remote, &data)
+      .map_err(|e| e.to_string())?;
     Ok(())
   })
 }

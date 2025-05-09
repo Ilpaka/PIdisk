@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     include: [
-      "@tauri-apps/api/core"
+      "@tauri-apps/api/dialog",
+      "@tauri-apps/api/core",
+      "@tauri-apps/api/tauri",
     ],
     exclude: ["some-large-lib"],
   },

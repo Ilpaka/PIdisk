@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "com.sip.PIdisk",
   "productName": "PIdisk",
   "version": "0.1.0",
-  "identifier": "com.sip.PIdisk",
   "build": {
     "beforeDevCommand": "npm run dev --prefix ../frontend",
     "beforeBuildCommand": "npm run build --prefix ../frontend",
@@ -10,6 +10,7 @@
     "frontendDist": "../frontend/dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "PIdisk",
@@ -20,6 +21,7 @@
       }
     ],
     "security": {
+      "capabilities": ["dialog"],
       "csp": null
     }
   },

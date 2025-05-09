@@ -19,6 +19,7 @@ import {
 import SettingsIcon from "@mui/icons-material/Settings";
 import AddIcon      from "@mui/icons-material/Add";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+const { save } = window.__TAURI__.dialog;
 
 import FolderTree from "./components/FolderTree";
 import FileGrid   from "./components/FileGrid";
@@ -136,16 +137,6 @@ export default function App() {
        await loadDirectory(currentPath);
      };
 
-     const handleDownload = async (name) => {
-      handleClose(); // прячем контекстное меню
-      try {
-        await invoke("download_and_save", { path: name });
-        // нативный диалог уже показан и сохранение выполнится в callback-е
-      } catch (e) {
-        console.error("Download error:", e);
-        setError(String(e));
-      }
-    };
   const handleNewFolder = async () => {
     handleClose();
     const base = "новая папка";
@@ -211,6 +202,22 @@ export default function App() {
     };
     inp.click();
   }
+
+  const handleDownload = async (fileName) => {
+    try {
+      const savePath = await save({ defaultPath: fileName });
+      if (!savePath) return;
+      handleClose();
+      await invoke('download_and_save', {
+        serverFileName: fileName,
+        savePath,
+      });
+
+    } catch (err) {
+      console.error('download error:', err);
+      setError(String(err));
+    }
+  };
 
   async function handleClearAll() {
     console.log("🔔 handleClearAll вызван, очищаем корзину:", currentPath);
@@ -326,10 +333,11 @@ export default function App() {
           >
             {menu?.name ? (
               <>
-                <MenuItem onClick={() => handleDownload(menu.name)}>Скачать</MenuItem>
                 {menu.isFolder && (
                   <MenuItem onClick={() => handleOpen(menu.name)}>Открыть</MenuItem>
                 )}
+
+                <MenuItem onClick={() => handleDownload(menu.name)}>Скачать</MenuItem>
                 <MenuItem onClick={() => handleRenameMenu(menu.name)}>Переименовать</MenuItem>
                 <MenuItem onClick={() => handleDelete(menu.name)}>Удалить</MenuItem>
               </>

@@ -11,7 +11,8 @@ use std::io::Read;
 use std::net::TcpStream;
 use std::sync::Mutex;
 use tauri::command;
-use tauri_plugin_dialog::DialogExt;
+use std::fs::File;
+use std::io::{Write, BufWriter};
 
 /// SSH-настройки + корень и корзина
 #[derive(Serialize, Deserialize, Clone)]
@@ -248,38 +249,35 @@ fn upload_file(filename: String, data: Vec<u8>) -> Result<(), String> {
 }
 
 #[command]
-fn download_and_save(path: String, app_handle: tauri::AppHandle) -> Result<(), String> {
-  // 1) Собираем полный путь на сервере
-  let cwd = CURRENT_DIR.lock().unwrap().clone();
-  let full_path = if path.starts_with('/') {
-    path.clone()
-  } else {
-    format!("{}/{}", cwd, path)
-  };
+fn download_and_save(server_file_name: String, save_path: String) -> Result<(), String> {
+    // Получаем базовую директорию из CURRENT_DIR
+    let base_dir = CURRENT_DIR.lock().unwrap().clone();
 
-  // 2) Скачиваем всё в Vec<u8>
-  let data: Vec<u8> = with_session(|sess| {
-    let sftp = sess.sftp().map_err(|e| e.to_string())?;
-    let mut remote = sftp.open(&full_path).map_err(|e| e.to_string())?;
-    let mut buf = Vec::new();
-    remote.read_to_end(&mut buf).map_err(|e| e.to_string())?;
-    Ok(buf)
-  })?;
+    // Формируем полный путь к файлу на сервере
+    let full_server_path = std::path::Path::new(&base_dir).join(&server_file_name);
 
-  // 3) Показываем диалог сохранения файла через DialogExt
-  app_handle.dialog().file().save_file(move |maybe_dest| {
-    if let Some(dest) = maybe_dest {
-        if let Some(path) = dest.as_path() {
-            if let Err(err) = std::fs::write(path, &data) {
-                eprintln!("Failed to save downloaded file to {:?}: {}", path, err);
-            }
+    let file = File::create(&save_path).map_err(|e| e.to_string())?;
+    let mut writer = BufWriter::new(file);
+
+    with_session(|sess| {
+        let sftp = sess.sftp().map_err(|e| e.to_string())?;
+        // Открываем файл по полному пути
+        let mut remote = sftp.open(full_server_path.to_str().unwrap()).map_err(|e| {
+            let err_msg = format!("Failed to open remote file '{:?}': {}", full_server_path, e);
+            println!("{}", err_msg);
+            err_msg
+        })?;
+        let mut buf = [0u8; 16 * 1024];
+        loop {
+            let n = remote.read(&mut buf).map_err(|e| e.to_string())?;
+            if n == 0 { break; }
+            writer.write_all(&buf[..n]).map_err(|e| e.to_string())?;
         }
-    }
-});
+        Ok(())
+    })?;
 
-  Ok(())
+    Ok(())
 }
-
 
 
 #[command]

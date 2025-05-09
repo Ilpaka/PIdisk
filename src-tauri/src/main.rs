@@ -11,7 +11,7 @@ use std::io::Read;
 use std::net::TcpStream;
 use std::sync::Mutex;
 use tauri::command;
-
+use tauri_plugin_dialog::DialogExt;
 
 /// SSH-настройки + корень и корзина
 #[derive(Serialize, Deserialize, Clone)]
@@ -248,6 +248,41 @@ fn upload_file(filename: String, data: Vec<u8>) -> Result<(), String> {
 }
 
 #[command]
+fn download_and_save(path: String, app_handle: tauri::AppHandle) -> Result<(), String> {
+  // 1) Собираем полный путь на сервере
+  let cwd = CURRENT_DIR.lock().unwrap().clone();
+  let full_path = if path.starts_with('/') {
+    path.clone()
+  } else {
+    format!("{}/{}", cwd, path)
+  };
+
+  // 2) Скачиваем всё в Vec<u8>
+  let data: Vec<u8> = with_session(|sess| {
+    let sftp = sess.sftp().map_err(|e| e.to_string())?;
+    let mut remote = sftp.open(&full_path).map_err(|e| e.to_string())?;
+    let mut buf = Vec::new();
+    remote.read_to_end(&mut buf).map_err(|e| e.to_string())?;
+    Ok(buf)
+  })?;
+
+  // 3) Показываем диалог сохранения файла через DialogExt
+  app_handle.dialog().file().save_file(move |maybe_dest| {
+    if let Some(dest) = maybe_dest {
+        if let Some(path) = dest.as_path() {
+            if let Err(err) = std::fs::write(path, &data) {
+                eprintln!("Failed to save downloaded file to {:?}: {}", path, err);
+            }
+        }
+    }
+});
+
+  Ok(())
+}
+
+
+
+#[command]
 fn rename(old: String, new: String) -> Result<(), String> {
   // берём текущий рабочий каталог
   let cwd = CURRENT_DIR.lock().unwrap().clone();
@@ -270,6 +305,7 @@ fn rename(old: String, new: String) -> Result<(), String> {
 
 fn main() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_dialog::init())
     .invoke_handler(tauri::generate_handler![
       get_settings,
       update_settings,
@@ -280,7 +316,8 @@ fn main() {
       rm,
       clear_all,
       df,
-      upload_file
+      upload_file,
+      download_and_save
     ])
     .run(tauri::generate_context!())
     .expect("error while running Tauri application");

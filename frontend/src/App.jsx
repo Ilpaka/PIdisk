@@ -136,6 +136,16 @@ export default function App() {
        await loadDirectory(currentPath);
      };
 
+     const handleDownload = async (name) => {
+      handleClose(); // прячем контекстное меню
+      try {
+        await invoke("download_and_save", { path: name });
+        // нативный диалог уже показан и сохранение выполнится в callback-е
+      } catch (e) {
+        console.error("Download error:", e);
+        setError(String(e));
+      }
+    };
   const handleNewFolder = async () => {
     handleClose();
     const base = "новая папка";
@@ -316,12 +326,11 @@ export default function App() {
           >
             {menu?.name ? (
               <>
+                <MenuItem onClick={() => handleDownload(menu.name)}>Скачать</MenuItem>
                 {menu.isFolder && (
                   <MenuItem onClick={() => handleOpen(menu.name)}>Открыть</MenuItem>
                 )}
-                <MenuItem onClick={() => handleRenameMenu(menu.name)}>
-                  Переименовать
-                </MenuItem>
+                <MenuItem onClick={() => handleRenameMenu(menu.name)}>Переименовать</MenuItem>
                 <MenuItem onClick={() => handleDelete(menu.name)}>Удалить</MenuItem>
               </>
             ) : (

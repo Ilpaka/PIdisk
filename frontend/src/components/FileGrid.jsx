@@ -75,6 +75,7 @@ export default function FileGrid({
   renameValue,
   onRenameChange,
   onRenameConfirm,
+  viewMode = "grid", // по умолчанию grid
 }) {
   const inputRef = useRef(null);
 
@@ -85,52 +86,105 @@ export default function FileGrid({
     }
   }, [renameTarget]);
 
+  // --- GRID VIEW ---
+  if (viewMode === "grid") {
+    return (
+      <Grid container spacing={2}>
+        {items.map((name) => (
+          <Grid item xs={3} key={name}>
+            <Paper
+              onDoubleClick={() => onDoubleClick(name)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onContextMenu(e, name);
+              }}
+              sx={{
+                p: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                minHeight: 56,
+              }}
+            >
+              {renameTarget === name ? (
+                <TextField
+                  inputRef={inputRef}
+                  value={renameValue}
+                  onChange={(e) => onRenameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onRenameConfirm();
+                    if (e.key === "Escape") {
+                      onRenameChange(name);
+                      onRenameConfirm();
+                    }
+                  }}
+                  onBlur={() => setTimeout(onRenameConfirm, 0)}
+                  size="small"
+                  fullWidth
+                  variant="standard"
+                />
+              ) : (
+                <Box display="flex" alignItems="center" gap={1}>
+                  {getFileIcon(name)}
+                  <Typography noWrap>{name}</Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+    );
+  }
+
+  // --- LIST VIEW ---
   return (
-    <Grid container spacing={2}>
+    <Box>
       {items.map((name) => (
-        <Grid item xs={3} key={name}>
-          <Paper
-            onDoubleClick={() => onDoubleClick(name)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onContextMenu(e, name);
-            }}
-            sx={{
-              p: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              minHeight: 56,
-            }}
-          >
-            {renameTarget === name ? (
-              <TextField
-                inputRef={inputRef}
-                value={renameValue}
-                onChange={(e) => onRenameChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onRenameConfirm();
-                  if (e.key === "Escape") {
-                    onRenameChange(name);
-                    onRenameConfirm();
-                  }
-                }}
-                onBlur={() => setTimeout(onRenameConfirm, 0)}
-                size="small"
-                fullWidth
-                variant="standard"
-              />
-            ) : (
-              <Box display="flex" alignItems="center" gap={1}>
-                {getFileIcon(name)}
-                <Typography noWrap>{name}</Typography>
-              </Box>
-            )}
-          </Paper>
-        </Grid>
+        <Paper
+          key={name}
+          onDoubleClick={() => onDoubleClick(name)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onContextMenu(e, name);
+          }}
+          sx={{
+            p: 1,
+            mb: 1,
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            minHeight: 48,
+            gap: 2,
+          }}
+        >
+          {renameTarget === name ? (
+            <TextField
+              inputRef={inputRef}
+              value={renameValue}
+              onChange={(e) => onRenameChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onRenameConfirm();
+                if (e.key === "Escape") {
+                  onRenameChange(name);
+                  onRenameConfirm();
+                }
+              }}
+              onBlur={() => setTimeout(onRenameConfirm, 0)}
+              size="small"
+              fullWidth
+              variant="standard"
+            />
+          ) : (
+            <>
+              {getFileIcon(name)}
+              <Typography noWrap>{name}</Typography>
+            </>
+          )}
+        </Paper>
       ))}
-    </Grid>
+    </Box>
   );
 }

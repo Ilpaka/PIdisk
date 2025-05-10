@@ -18,6 +18,8 @@ import {
 } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import AddIcon      from "@mui/icons-material/Add";
+import ViewListIcon from '@mui/icons-material/ViewList';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 const { save } = window.__TAURI__.dialog;
 
@@ -45,7 +47,7 @@ export default function App() {
   const [rootDir,  setRootDir]  = useState("");
   const [trashDir, setTrashDir] = useState("");
   const [trashCleared, setTrashCleared] = useState(false);
-
+  const [viewMode, setViewMode] = useState("grid"); 
   // ===== initial load =====
   useEffect(() => {
     loadDirectory("/root/PIdisk");
@@ -212,7 +214,6 @@ export default function App() {
         serverFileName: fileName,
         savePath,
       });
-
     } catch (err) {
       console.error('download error:', err);
       setError(String(err));
@@ -239,6 +240,21 @@ export default function App() {
         <Toolbar variant="dense" sx={{ justifyContent: "space-between" }}>
           <Typography variant="h6">PIdisk</Typography>
           <Box>
+          <IconButton
+            size="small"
+            color={viewMode === "grid" ? "primary" : "inherit"}
+            onClick={() => setViewMode("grid")}
+            title="Сетка"
+          >
+           <ViewModuleIcon />
+          </IconButton>
+          <IconButton
+            color={viewMode === "list" ? "primary" : "default"}
+            onClick={() => setViewMode("list")}
+            title="Показать списком"
+          >
+          <ViewListIcon />
+          </IconButton>
             {/* Кнопка настроек */}
             <IconButton size="small" color="inherit" onClick={handleOpenSettings}>
               <SettingsIcon />
@@ -312,7 +328,7 @@ export default function App() {
         </Box>
   
         {/* RIGHT PANEL */}
-        <Box flex={1} p={2} overflow="auto" onContextMenu={onMainContext}>
+        <Box flex={1} p={2} overflow="auto" onContextMenu={onMainContext} sx={{height: "calc(100vh - 48px)" ,overflow: "auto"}}>
           {error && <Box color="error.main" mb={1}>{error}</Box>}
           <FileGrid
             items={files}
@@ -322,7 +338,8 @@ export default function App() {
             renameValue={renameValue}
             onRenameChange={setRenameValue}
             onRenameConfirm={handleRenameConfirm}
-          />
+            viewMode={viewMode}
+          />                    
           <Menu
             open={!!menu}
             onClose={handleClose}
@@ -336,7 +353,7 @@ export default function App() {
                 {menu.isFolder && (
                   <MenuItem onClick={() => handleOpen(menu.name)}>Открыть</MenuItem>
                 )}
-
+                
                 <MenuItem onClick={() => handleDownload(menu.name)}>Скачать</MenuItem>
                 <MenuItem onClick={() => handleRenameMenu(menu.name)}>Переименовать</MenuItem>
                 <MenuItem onClick={() => handleDelete(menu.name)}>Удалить</MenuItem>

@@ -21,6 +21,9 @@ import AddIcon      from "@mui/icons-material/Add";
 import ViewListIcon from '@mui/icons-material/ViewList';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
+
 const { save } = window.__TAURI__.dialog;
 
 import FolderTree from "./components/FolderTree";
@@ -47,7 +50,14 @@ export default function App() {
   const [rootDir,  setRootDir]  = useState("");
   const [trashDir, setTrashDir] = useState("");
   const [trashCleared, setTrashCleared] = useState(false);
-  const [viewMode, setViewMode] = useState("grid"); 
+  const [viewMode, setViewMode] = useState("grid");
+  const [snackbar, setSnackbar] = useState({open: false, message: '', severity: 'success'});
+
+
+  const Alert = React.forwardRef(function Alert(props, ref) {
+    return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+  });
+
   // ===== initial load =====
   useEffect(() => {
     loadDirectory("/root/PIdisk");
@@ -90,6 +100,11 @@ export default function App() {
     e.preventDefault();
     setMenu({ mouseX: e.clientX + 2, mouseY: e.clientY + 4, name: null, isFolder: false });
   }
+
+  function showSnackbar(message, severity = 'success') {
+    setSnackbar({ open: true, message, severity });
+  }
+
   const handleClose = () => setMenu(null);
 
   // ===== menu actions =====
@@ -101,9 +116,14 @@ export default function App() {
 
   const handleDelete = async (name) => {
     handleClose();
+    try{
     await invoke("rm", { target: name });
     loadDirectory(currentPath);
     setDeletedItem({ parentPath: currentPath, name });
+    showSnackbar('Файл(-ы) удалён(-ы)!', 'success');
+    } catch (e){
+      showSnackbar('Ошибка при удаление!', 'error');
+    }
   };
 
   const handleRenameMenu = (name) => {
@@ -127,14 +147,14 @@ export default function App() {
        if (newName && newName !== oldName) {
          try {
            await invoke("rename", { old: oldName, new: newName });
+           showSnackbar('Файл переименован!', 'success');
            // чтобы обновилось дерево слева, если нужно
            setCreatedFolder({ parentPath: currentPath, oldName, newName });
          } catch (e) {
-           console.error("rename error:", e);
+           showSnackbar('Ошибка при переименование!', 'error');
            setError(String(e));
          }
        }
-    
        // всегда обновляем файллист правой панели
        await loadDirectory(currentPath);
      };
@@ -171,6 +191,7 @@ export default function App() {
         password,
       });
       setOpenSettings(false);
+      showSnackbar('Успешно!', 'success');
       await loadDirectory(currentPath);
     } catch (e) {
       setError(
@@ -196,10 +217,10 @@ export default function App() {
           filename: file.name,
           data: bytes,
         });
+        showSnackbar('Загрузка завершена!', 'success');
         await loadDirectory(currentPath);
       } catch (err) {
-        console.error("upload error:", err);
-        setError(String(err));
+        showSnackbar('Ошибка при загрузке!', 'error');
       }
     };
     inp.click();
@@ -214,9 +235,9 @@ export default function App() {
         serverFileName: fileName,
         savePath,
       });
+      showSnackbar('Файл(-ы) скачен(-ы)!', 'success');
     } catch (err) {
-      console.error('download error:', err);
-      setError(String(err));
+      showSnackbar('Ошибка при скачивание!', 'error');
     }
   };
 
@@ -224,12 +245,12 @@ export default function App() {
     console.log("🔔 handleClearAll вызван, очищаем корзину:", currentPath);
     try {
       await invoke("clear_all");
+      showSnackbar('Корзина очищена!', 'success');
     // после очистки — перезагрузим корзину
       await loadDirectory(currentPath);
       setTrashCleared(true);  
     } catch (e) {
-      console.error("clear_all error:", e);
-      setError(String(e));
+      showSnackbar('Ошибка при очистке корзины!', 'error');
     }
     }
 
@@ -364,6 +385,20 @@ export default function App() {
           </Menu>
         </Box>
       </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>  
     </Box>
   );
 }

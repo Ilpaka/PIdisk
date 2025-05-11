@@ -6,10 +6,10 @@ import {
   ListItemIcon,
   ListItemText,
 } from "@mui/material";
-import FolderIcon           from "@mui/icons-material/Folder";
-import FolderOpenIcon       from "@mui/icons-material/FolderOpen";
-import InsertDriveFileIcon  from "@mui/icons-material/InsertDriveFile";
-import { invoke }           from "@tauri-apps/api/core";
+import FolderIcon from "@mui/icons-material/Folder";
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import { invoke } from "@tauri-apps/api/core";
 
 // Помощник для поиска узла по пути
 function findNode(nodes, path) {
@@ -23,56 +23,72 @@ function findNode(nodes, path) {
   return null;
 }
 
+// Рекурсивное обновление open у узлов: открываем только те, что на пути currentPath
+function updateOpenState(nodes, currentPath) {
+  return nodes.map((node) => {
+    const isOnPath = currentPath.startsWith(node.path);
+    let children = node.children;
+
+    if (children) {
+      children = updateOpenState(children, currentPath);
+    }
+
+    return {
+      ...node,
+      open: isOnPath,
+      children,
+    };
+  });
+}
+
 export default function FolderTree({
   currentPath,
   onNavigate,
   onDropFile,
   createdFolder,
   onFolderCreated,
-  deletedItem,     
+  deletedItem,
   onItemDeleted,
   trashDir,
   trashCleared,
-  onTrashCleared,   
+  onTrashCleared,
 }) {
   const ROOT = "/root/PIdisk";
   const [tree, setTree] = useState([
     { name: "PIdisk", path: ROOT, children: null, open: false, isFolder: true },
   ]);
 
-  // При смене currentPath — раскрываем все сегменты
+  // При смене currentPath - обновляем open и загружаем детей
   useEffect(() => {
-    const segs = currentPath
-      .split("/")
-      .filter(Boolean)
-      .filter((s, i) => !(i === 0 && s === "root"));
-
     async function expandAll() {
-      let nodes = tree;
-      let acc   = "";
-      for (let i = 0; i < segs.length; i++) {
-        const seg = segs[i];
-        acc = i === 0 ? ROOT : `${acc}/${seg}`;
-        const node = nodes.find((n) => n.name === seg);
-        if (!node) break;
-        if (node.isFolder && node.children === null) {
-          const [ , list ] = await invoke("read_dir", { dir: node.path });
-          node.children = list.map((n) => ({
-            name: n,
-            path: `${node.path}/${n}`,
-            children: null,
-            open: false,
-            isFolder: !/\.[^/.]+$/.test(n),
-          }));
+      // 1. Обновляем open у всех узлов: открываем только путь к currentPath
+      let newTree = updateOpenState(tree, currentPath);
+
+      // 2. Рекурсивно загружаем детей для открытых папок без children
+      async function loadChildren(nodes) {
+        for (const node of nodes) {
+          if (node.open && node.isFolder && node.children === null) {
+            const [, list] = await invoke("read_dir", { dir: node.path });
+            node.children = list.map((n) => ({
+              name: n,
+              path: `${node.path}/${n}`,
+              children: null,
+              open: false,
+              isFolder: !/\.[^/.]+$/.test(n),
+            }));
+            await loadChildren(node.children);
+          } else if (node.children) {
+            await loadChildren(node.children);
+          }
         }
-        node.open = true;
-        nodes = node.children || [];
       }
-      setTree([...tree]);
+
+      await loadChildren(newTree);
+      setTree([...newTree]);
     }
 
     expandAll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPath]);
 
   // Вставка / переименование узла
@@ -103,7 +119,7 @@ export default function FolderTree({
     onFolderCreated();
   }, [createdFolder, onFolderCreated, tree]);
 
-  // **Удаление** узла
+  // Удаление узла
   useEffect(() => {
     if (!deletedItem) return;
     const { parentPath, name } = deletedItem;
@@ -115,23 +131,23 @@ export default function FolderTree({
     onItemDeleted();
   }, [deletedItem, onItemDeleted, tree]);
 
+  // Очистка корзины
   useEffect(() => {
     if (!trashCleared) return;
-    // найдём узел корзины
     const node = findNode(tree, trashDir);
     if (node && node.isFolder) {
-      node.children = [];      // сброс
-      node.open = true;        // оставить раскрытой
-    setTree([...tree]);
+      node.children = [];
+      node.open = true;
+      setTree([...tree]);
     }
     onTrashCleared();
-    }, [trashCleared, trashDir, tree, onTrashCleared]);
+  }, [trashCleared, trashDir, tree, onTrashCleared]);
 
   // Клик раскрыть / свернуть
   const toggle = async (node) => {
     if (!node.isFolder) return;
     if (node.children === null) {
-      const [ , list ] = await invoke("read_dir", { dir: node.path });
+      const [, list] = await invoke("read_dir", { dir: node.path });
       node.children = list.map((n) => ({
         name: n,
         path: `${node.path}/${n}`,
@@ -144,36 +160,49 @@ export default function FolderTree({
     setTree([...tree]);
   };
 
-  // Рекурсивный рендер
-  const renderNode = (node, depth = 0) => (
-    <React.Fragment key={node.path}>
-      <ListItemButton
-        sx={{ pl: 2 + depth * 2 }}
-        onClick={() => toggle(node)}
-        onDoubleClick={() => node.isFolder && onNavigate(node.path)}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          e.preventDefault();
-          const src = e.dataTransfer.getData("text/plain");
-          onDropFile(src, node.path);
-        }}
-      >
-        <ListItemIcon sx={{ minWidth: 36 }}>
-          {node.isFolder
-            ? node.open
-              ? <FolderOpenIcon />
-              : <FolderIcon />
-            : <InsertDriveFileIcon />}
-        </ListItemIcon>
-        <ListItemText primary={node.name} />
-      </ListItemButton>
-      {node.open && node.children && (
-        <List disablePadding>
-          {node.children.map((child) => renderNode(child, depth + 1))}
-        </List>
-      )}
-    </React.Fragment>
-  );
+  // Рекурсивный рендер с подсветкой текущей папки
+  const renderNode = (node, depth = 0) => {
+    const isSelected = node.path === currentPath;
+
+    return (
+      <React.Fragment key={node.path}>
+        <ListItemButton
+          selected={isSelected}
+          sx={{
+            pl: 2 + depth * 2,
+            bgcolor: isSelected ? "action.selected" : "inherit",
+            fontWeight: isSelected ? "bold" : "normal",
+          }}
+          onClick={() => toggle(node)}
+          onDoubleClick={() => node.isFolder && onNavigate(node.path)}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const src = e.dataTransfer.getData("text/plain");
+            onDropFile(src, node.path);
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            {node.isFolder ? (
+              node.open ? (
+                <FolderOpenIcon />
+              ) : (
+                <FolderIcon />
+              )
+            ) : (
+              <InsertDriveFileIcon />
+            )}
+          </ListItemIcon>
+          <ListItemText primary={node.name} />
+        </ListItemButton>
+        {node.open && node.children && (
+          <List disablePadding>
+            {node.children.map((child) => renderNode(child, depth + 1))}
+          </List>
+        )}
+      </React.Fragment>
+    );
+  };
 
   return (
     <List dense disablePadding sx={{ height: "100%" }}>

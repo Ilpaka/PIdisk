@@ -23,12 +23,57 @@ import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
+import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Link from '@mui/material/Link';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 const { save } = window.__TAURI__.dialog;
 
 import FolderTree from "./components/FolderTree";
 import FileGrid   from "./components/FileGrid";
 import MemoryBar  from "./components/MemoryBar";
+
+function renderBreadcrumbs(currentPath, onNavigate) {
+  const pathSegments = currentPath.replace(/^\/+/, '').split('/');
+  let crumbs = [];
+  let accPath = '';
+  pathSegments.forEach((seg, idx) => {
+    accPath += '/' + seg;
+    crumbs.push({
+      name: seg,
+      path: accPath
+    });
+  });
+
+  return (
+    <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextIcon fontSize="small" />} sx={{ mb: 1 }}>
+      {crumbs.map((crumb, idx) => {
+        const isLast = idx === crumbs.length - 1;
+        return isLast ? (
+          <Typography color="text.primary" key={crumb.path} noWrap>
+            {crumb.name}
+          </Typography>
+        ) : (
+          <Link
+            key={crumb.path}
+            color="inherit"
+            underline="hover"
+            sx={{ cursor: 'pointer' }}
+            onClick={e => {
+              e.preventDefault();
+              onNavigate(crumb.path);
+            }}
+            noWrap
+            href="#"
+          >
+            {crumb.name}
+          </Link>
+        );
+      })}
+    </Breadcrumbs>
+  );
+}
+
 
 export default function App() {
   // ===== states =====
@@ -351,6 +396,7 @@ export default function App() {
         {/* RIGHT PANEL */}
         <Box flex={1} p={2} overflow="auto" onContextMenu={onMainContext} sx={{height: "calc(100vh - 48px)" ,overflow: "auto"}}>
           {error && <Box color="error.main" mb={1}>{error}</Box>}
+          {renderBreadcrumbs(currentPath, loadDirectory)}
           <FileGrid
             items={files}
             onDoubleClick={handleOpen}

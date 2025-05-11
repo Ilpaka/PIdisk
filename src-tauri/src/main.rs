@@ -205,7 +205,6 @@ fn rm(target: String) -> Result<(), String> {
 #[command]
 fn clear_all() -> Result<(), String> {
   let trash = SETTINGS.lock().unwrap().trash_dir.clone();
-  println!("➤ clear_all called, trash_dir = {}", trash);
   with_session(|sess| {
     let mut ch = sess.channel_session().map_err(|e| e.to_string())?;
     let cmd = format!("cd '{}' && rm -rf ./*", trash);

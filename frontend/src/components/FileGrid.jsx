@@ -1,6 +1,6 @@
 // src/components/FileGrid.jsx
 import React, { useRef, useEffect } from "react";
-import { Grid, Paper, Typography, TextField, Box } from "@mui/material";
+import { Grid, Paper, Typography, TextField, Box, Tooltip} from "@mui/material";
 import FolderIcon        from "@mui/icons-material/Folder";
 import PictureAsPdfIcon  from "@mui/icons-material/PictureAsPdf";
 import ImageIcon         from "@mui/icons-material/Image";
@@ -10,6 +10,8 @@ import VideocamIcon      from "@mui/icons-material/Videocam";
 import MusicNoteIcon     from "@mui/icons-material/MusicNote";
 import DescriptionIcon   from "@mui/icons-material/Description";
 
+
+// ... getFileIcon и другие функции ...
 // Цветные PNG-иконки через Icons8 CDN
 const extToIcon = {
   // документы
@@ -75,65 +77,87 @@ export default function FileGrid({
   renameValue,
   onRenameChange,
   onRenameConfirm,
-  viewMode = "grid", // по умолчанию grid
+  viewMode = "grid",
 }) {
-  const inputRef = useRef(null);
+  // Сортируем: папки - сначала, потом файлы
+  const sortedItems = [...items].sort((a, b) => {
+    const aIsFolder = !/\.[^/.]+$/.test(a);
+    const bIsFolder = !/\.[^/.]+$/.test(b);
+    if (aIsFolder && !bIsFolder) return -1;
+    if (!aIsFolder && bIsFolder) return 1;
+    return a.localeCompare(b);
+  });
 
-  useEffect(() => {
-    if (renameTarget && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [renameTarget]);
-
-  // --- GRID VIEW ---
   if (viewMode === "grid") {
     return (
       <Grid container spacing={2}>
-        {items.map((name) => (
-          <Grid item xs={3} key={name}>
-            <Paper
-              onDoubleClick={() => onDoubleClick(name)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onContextMenu(e, name);
-              }}
-              sx={{
-                p: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                minHeight: 56,
-              }}
-            >
-              {renameTarget === name ? (
-                <TextField
-                  inputRef={inputRef}
-                  value={renameValue}
-                  onChange={(e) => onRenameChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onRenameConfirm();
-                    if (e.key === "Escape") {
-                      onRenameChange(name);
-                      onRenameConfirm();
-                    }
-                  }}
-                  onBlur={() => setTimeout(onRenameConfirm, 0)}
-                  size="small"
-                  fullWidth
-                  variant="standard"
-                />
-              ) : (
-                <Box display="flex" alignItems="center" gap={1}>
-                  {getFileIcon(name)}
-                  <Typography noWrap>{name}</Typography>
+        {sortedItems.map((name) => {
+          const isFolder = !/\.[^/.]+$/.test(name);
+
+          return (
+            <Grid item xs={6} sm={4} md={3} lg={2} key={name}>
+              <Paper
+                onDoubleClick={() => onDoubleClick(name)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onContextMenu(e, name);
+                }}
+                sx={{
+                  p: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 120,
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  transition: "box-shadow 0.2s, background 0.2s",
+                  boxShadow: 1,
+                  "&:hover": {
+                    backgroundColor: "action.hover",
+                    boxShadow: 4,
+                  },
+                }}
+              >
+                <Box sx={{ mb: 1 }}>
+                  {getFileIcon(name, 40)} {/* 40px иконка */}
                 </Box>
-              )}
-            </Paper>
-          </Grid>
-        ))}
+                {renameTarget === name ? (
+                  <TextField
+                    value={renameValue}
+                    onChange={(e) => onRenameChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") onRenameConfirm();
+                      if (e.key === "Escape") {
+                        onRenameChange(name);
+                        onRenameConfirm();
+                      }
+                    }}
+                    onBlur={() => setTimeout(onRenameConfirm, 0)}
+                    size="small"
+                    fullWidth
+                    variant="standard"
+                  />
+                ) : (
+                  <Tooltip title={name} arrow>
+                    <Typography
+                      noWrap
+                      sx={{
+                        maxWidth: 100,
+                        textAlign: "center",
+                        fontWeight: isFolder ? "bold" : "normal",
+                        fontSize: 14,
+                      }}
+                    >
+                      {name}
+                    </Typography>
+                  </Tooltip>
+                )}
+              </Paper>
+            </Grid>
+          );
+        })}
       </Grid>
     );
   }

@@ -248,28 +248,32 @@ export default function App() {
   };
   
   const handleUploadClick = async () => {
-    // создаём скрытый input «на лету»
-    const inp = document.createElement("input");
-    inp.type = "file";
-    inp.onchange = async (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      try {
-        // читаем содержимое
+  // создаём скрытый input «на лету»
+  const inp = document.createElement("input");
+  inp.type = "file";
+  inp.multiple = true; // разрешаем множественный выбор файлов
+  inp.onchange = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const buf = await file.arrayBuffer();
         const bytes = Array.from(new Uint8Array(buf));
         await invoke("upload_file", {
           filename: file.name,
           data: bytes,
         });
-        showSnackbar('Загрузка завершена!', 'success');
-        await loadDirectory(currentPath);
-      } catch (err) {
-        showSnackbar('Ошибка при загрузке!', 'error');
       }
-    };
-    inp.click();
-  }
+      showSnackbar('Загрузка завершена!', 'success');
+      await loadDirectory(currentPath);
+    } catch (err) {
+      showSnackbar('Ошибка при загрузке!', 'error');
+    }
+  };
+  inp.click();
+};
+
 
   const handleDownload = async (fileName) => {
     try {

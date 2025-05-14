@@ -10,9 +10,6 @@ import VideocamIcon      from "@mui/icons-material/Videocam";
 import MusicNoteIcon     from "@mui/icons-material/MusicNote";
 import DescriptionIcon   from "@mui/icons-material/Description";
 
-
-// ... getFileIcon и другие функции ...
-// Цветные PNG-иконки через Icons8 CDN
 const extToIcon = {
   // документы
   pdf:  <PictureAsPdfIcon color="error" />,

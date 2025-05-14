@@ -97,7 +97,7 @@ export default function App() {
   const [trashCleared, setTrashCleared] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
   const [snackbar, setSnackbar] = useState({open: false, message: '', severity: 'success'});
-
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
   const Alert = React.forwardRef(function Alert(props, ref) {
     return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
@@ -124,6 +124,7 @@ export default function App() {
       const [newPath, list] = await invoke("read_dir", { dir });
       setCurrentPath(newPath);
       setFiles(list);
+      setSelectedFiles([]);
       setError(null);
     } catch (e) {
       setError(String(e));
@@ -410,6 +411,8 @@ export default function App() {
             onRenameChange={setRenameValue}
             onRenameConfirm={handleRenameConfirm}
             viewMode={viewMode}
+            selectedFiles={selectedFiles}
+            setSelectedFiles={setSelectedFiles}
           />                    
           <Menu
             open={!!menu}

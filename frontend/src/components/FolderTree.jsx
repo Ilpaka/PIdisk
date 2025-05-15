@@ -168,15 +168,19 @@ export default function FolderTree({
   }, [createdFolder, onFolderCreated, tree]);
 
   useEffect(() => {
-    if (!deletedItem) return;
-    const { parentPath, name } = deletedItem;
-    const parent = findNode(tree, parentPath);
-    if (parent && parent.children) {
-      parent.children = parent.children.filter((c) => c.name !== name);
-      setTree([...tree]);
-    }
-    onItemDeleted();
-  }, [deletedItem, onItemDeleted, tree]);
+  if (!deletedItem) return;
+
+  const { parentPath, names } = deletedItem;
+  if (!names) return;
+
+  const parent = findNode(tree, parentPath);
+  if (parent && parent.children) {
+    parent.children = parent.children.filter(c => !names.includes(c.name));
+    setTree([...tree]);
+  }
+  onItemDeleted();
+}, [deletedItem, onItemDeleted, tree]);
+
 
   useEffect(() => {
     if (!trashCleared) return;

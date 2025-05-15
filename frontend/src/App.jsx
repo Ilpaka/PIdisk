@@ -28,6 +28,7 @@ import Link from '@mui/material/Link';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 const { save } = window.__TAURI__.dialog;
+const { open } = window.__TAURI__.dialog;
 
 import FolderTree from "./components/FolderTree";
 import FileGrid   from "./components/FileGrid";
@@ -133,15 +134,19 @@ export default function App() {
 
   // ===== context menus =====
   function onFileContext(e, name) {
-    e.preventDefault();
-    e.stopPropagation();
-    setMenu({
-      mouseX:   e.clientX + 2,
-      mouseY:   e.clientY + 4,
-      name,
-      isFolder: !/\.[^/.]+$/.test(name),
-    });
-  }
+  e.preventDefault();
+  e.stopPropagation();
+  // Проверяем: клик по выделенному и выделено больше одного?
+  const isMultiSelected = selectedFiles.length > 1 && selectedFiles.includes(name);
+  setMenu({
+    mouseX:   e.clientX + 2,
+    mouseY:   e.clientY + 4,
+    name,
+    isFolder: !/\.[^/.]+$/.test(name),
+    multi: isMultiSelected, // добавляем флаг!
+  });
+}
+
   function onMainContext(e) {
     e.preventDefault();
     setMenu({ mouseX: e.clientX + 2, mouseY: e.clientY + 4, name: null, isFolder: false });
@@ -171,6 +176,23 @@ export default function App() {
       showSnackbar('Ошибка при удаление!', 'error');
     }
   };
+
+  const handleDeleteSelected = async () => {
+  handleClose();
+  if (!selectedFiles.length) return;
+  try {
+    // Если хотите подтверждение - используйте MUI Dialog, а не window.confirm
+    // Например, можно просто удалить без подтверждения:
+    for (const name of selectedFiles) {
+      await invoke("rm", { target: name });
+    }
+    await loadDirectory(currentPath);
+    setDeletedItem({ parentPath: currentPath, names: selectedFiles });
+    showSnackbar('Файлы удалены!', 'success');
+  } catch (e) {
+    showSnackbar('Ошибка при удалении!', 'error');
+  }
+};
 
   const handleRenameMenu = (name) => {
     handleClose();
@@ -275,7 +297,6 @@ export default function App() {
   inp.click();
 };
 
-
   const handleDownload = async (fileName) => {
     try {
       const savePath = await save({ defaultPath: fileName });
@@ -290,6 +311,36 @@ export default function App() {
       showSnackbar('Ошибка при скачивание!', 'error');
     }
   };
+
+const handleDownloadSelected = async () => {
+  if (!selectedFiles.length) return;
+  // Если выделен только один файл - используем стандартное скачивание
+  if (selectedFiles.length === 1) {
+    await handleDownload(selectedFiles[0]);
+    return;
+  }
+  // Несколько файлов - спрашиваем папку
+  try {
+    const folderPath = await open({
+      directory: true,
+      multiple: false,
+      title: "Выберите папку для сохранения файлов"
+    });
+    if (!folderPath) return;
+    handleClose();
+    for (const fileName of selectedFiles) {
+      const savePath = `${folderPath}/${fileName}`;
+      await invoke('download_and_save', {
+        serverFileName: fileName,
+        savePath,
+      });
+    }
+    showSnackbar('Файлы скачаны!', 'success');
+  } catch (err) {
+    showSnackbar('Ошибка при скачивании!', 'error');
+  }
+};
+
 
   async function handleClearAll() {
     console.log("🔔 handleClearAll вызван, очищаем корзину:", currentPath);
@@ -415,27 +466,38 @@ export default function App() {
             setSelectedFiles={setSelectedFiles}
           />                    
           <Menu
-            open={!!menu}
-            onClose={handleClose}
-            anchorReference="anchorPosition"
-            anchorPosition={
-              menu ? { top: menu.mouseY, left: menu.mouseX } : undefined
-            }
-          >
-            {menu?.name ? (
-              <>
-                {menu.isFolder && (
-                  <MenuItem onClick={() => handleOpen(menu.name)}>Открыть</MenuItem>
-                )}
-                
-                <MenuItem onClick={() => handleDownload(menu.name)}>Скачать</MenuItem>
-                <MenuItem onClick={() => handleRenameMenu(menu.name)}>Переименовать</MenuItem>
-                <MenuItem onClick={() => handleDelete(menu.name)}>Удалить</MenuItem>
-              </>
-            ) : (
-              <MenuItem onClick={handleNewFolder}>Новая папка</MenuItem>
-            )}
-          </Menu>
+  open={!!menu}
+  onClose={handleClose}
+  anchorReference="anchorPosition"
+  anchorPosition={menu ? { top: menu.mouseY, left: menu.mouseX } : undefined}
+>
+  {menu?.name ? (
+    // Если клик по выделенному и выделено больше одного файла
+    selectedFiles.length > 1 && selectedFiles.includes(menu.name) ? (
+      <>
+        <MenuItem onClick={handleDownloadSelected}>
+          Скачать выделенное ({selectedFiles.length})
+        </MenuItem>
+        <MenuItem onClick={handleDeleteSelected}>
+          Удалить выделенное ({selectedFiles.length})
+        </MenuItem>
+      </>
+    ) : (
+      <>
+        {menu.isFolder && (
+          <MenuItem onClick={() => handleOpen(menu.name)}>Открыть</MenuItem>
+        )}
+        <MenuItem onClick={() => handleDownload(menu.name)}>Скачать</MenuItem>
+        <MenuItem onClick={() => handleRenameMenu(menu.name)}>Переименовать</MenuItem>
+        <MenuItem onClick={() => handleDelete(menu.name)}>Удалить</MenuItem>
+      </>
+    )
+  ) : (
+    <MenuItem onClick={handleNewFolder}>Новая папка</MenuItem>
+  )}
+</Menu>
+
+
         </Box>
       </Box>
       <Snackbar

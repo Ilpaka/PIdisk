@@ -200,60 +200,71 @@ export default function FileGrid({
   }
 
   // --- LIST VIEW ---
-  return (
-    <Box>
-      {items.map((name) => (
-        <Paper
-          onClick={(e) => handleSelect(e, name)}
-          onDoubleClick={() => onDoubleClick(name)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onContextMenu(e, name);
-          }}
-          sx={{
-            p: 2,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: 120,
-            borderRadius: 2,
-            cursor: "pointer",
-            transition: "box-shadow 0.2s, background 0.2s",
-            boxShadow: selectedFiles.includes(name) ? 6 : 1,
-            backgroundColor: selectedFiles.includes(name) ? "primary.light" : "background.paper",
-            "&:hover": {
-              backgroundColor: selectedFiles.includes(name) ? "primary.light" : "action.hover",
-              boxShadow: selectedFiles.includes(name) ? 6 : 4,
-            },
-          }}
-        >
-          {renameTarget === name ? (
-            <TextField
-              inputRef={inputRef}
-              value={renameValue}
-              onChange={(e) => onRenameChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onRenameConfirm();
-                if (e.key === "Escape") {
-                  onRenameChange(name);
-                  onRenameConfirm();
-                }
-              }}
-              onBlur={() => setTimeout(onRenameConfirm, 0)}
-              size="small"
-              fullWidth
-              variant="standard"
-            />
-          ) : (
-            <>
-              {getFileIcon(name)}
-              <Typography noWrap>{name}</Typography>
-            </>
-          )}
-        </Paper>
-      ))}
-    </Box>
-  );
+ return (
+  <Box>
+    {items.map((name) => (
+      <Paper
+        key={name}
+        onClick={(e) => handleSelect(e, name)}
+        onDoubleClick={() => onDoubleClick(name)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onContextMenu(e, name);
+        }}
+        sx={{
+          p: 0.3,
+          display: "flex",
+          alignItems: "center",
+          minHeight: 28,
+          borderRadius: 1,
+          cursor: "pointer",
+          transition: "box-shadow 0.2s, background 0.2s",
+          boxShadow: selectedFiles.includes(name) ? 4 : 0,
+          backgroundColor: selectedFiles.includes(name) ? "primary.light" : "background.paper",
+          "&:hover": {
+            backgroundColor: selectedFiles.includes(name) ? "primary.light" : "action.hover",
+            boxShadow: selectedFiles.includes(name) ? 4 : 2,
+          },
+          mb: 0.3,
+        }}
+      >
+        <Box sx={{ mr: 1, ml: 0.5, display: "flex", alignItems: "center" }}>
+          {getFileIcon(name, 15)}
+        </Box>
+        {renameTarget === name ? (
+          <TextField
+            inputRef={inputRef}
+            value={renameValue}
+            onChange={(e) => onRenameChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onRenameConfirm();
+              if (e.key === "Escape") {
+                onRenameChange(name);
+                onRenameConfirm();
+              }
+            }}
+            onBlur={() => setTimeout(onRenameConfirm, 0)}
+            size="small"
+            fullWidth
+            variant="standard"
+            sx={{ fontSize: "0.8rem" }}
+          />
+        ) : (
+          <Typography
+            noWrap
+            sx={{
+              fontSize: "0.78rem",
+              lineHeight: 1.1,
+              ml: 0.5,
+              flex: 1,
+            }}
+          >
+            {name}
+          </Typography>
+        )}
+      </Paper>
+    ))}
+  </Box>
+);
 }

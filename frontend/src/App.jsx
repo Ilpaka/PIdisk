@@ -165,6 +165,32 @@ export default function App() {
     loadDirectory(next);
   };
 
+  const handleDownloadFolder = async (name) => {
+  handleClose();
+  try {
+    // Запрашиваем у пользователя, куда сохранить папку
+    const folderPath = await open({
+      directory: true,
+      multiple: false,
+      title: "Выберите папку для сохранения"
+    });
+    if (!folderPath) return; // пользователь отменил выбор
+
+    // Формируем путь для сохранения (папка назначения + имя скачиваемой папки)
+    const savePath = `${folderPath}/${name}`;
+
+    // Вызываем Rust-функцию
+    await invoke('download_folder', {
+      serverFolderName: name,
+      savePath: savePath,
+    });
+
+    showSnackbar('Папка скачана!', 'success');
+  } catch (err) {
+    showSnackbar('Ошибка при скачивании папки!', 'error');
+  }
+};
+
   const handleDelete = async (name) => {
     handleClose();
     try{
@@ -487,8 +513,9 @@ const handleDownloadSelected = async () => {
         {menu.isFolder && (
           <MenuItem onClick={() => handleOpen(menu.name)}>Открыть</MenuItem>
         )}
+        <MenuItem onClick={() => handleDownloadFolder(menu.name)}>Скачать папку</MenuItem>
         <MenuItem onClick={() => handleDownload(menu.name)}>Скачать</MenuItem>
-        <MenuItem onClick={() => handleRenameMenu(menu.name)}>Переименовать</MenuItem>
+        <MenuItem onClick={() => {setRenameTarget(menu.name); setRenameValue(menu.name); handleClose();}}>Переименовать</MenuItem>
         <MenuItem onClick={() => handleDelete(menu.name)}>Удалить</MenuItem>
       </>
     )

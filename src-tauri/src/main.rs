@@ -13,6 +13,7 @@ use std::sync::Mutex;
 use tauri::command;
 use std::fs::File;
 use std::io::{Write, BufWriter};
+use std::process::Command;
 
 /// SSH-настройки + корень и корзина
 #[derive(Serialize, Deserialize, Clone)]
@@ -278,7 +279,34 @@ fn download_and_save(server_file_name: String, save_path: String) -> Result<(), 
     Ok(())
 }
 
+#[tauri::command]
+fn download_folder(server_folder_name: String, save_path: String) -> Result<(), String> {
+    let settings = SETTINGS.lock().unwrap().clone();
+    let current_dir = CURRENT_DIR.lock().unwrap().clone();
 
+    // Формируем путь к папке на сервере
+    let remote_folder_path = std::path::Path::new(&current_dir).join(&server_folder_name);
+    let remote_folder_str = remote_folder_path.to_str().ok_or("Некорректный путь к папке на сервере")?;
+
+    // Формируем адрес для scp: user@host:/remote/path
+    let remote = format!("{}@{}:{}", settings.username, settings.host, remote_folder_str);
+
+    // Запускаем команду scp -P порт -r user@host:/remote/path /local/path
+    let status = std::process::Command::new("scp")
+        .arg("-P").arg(settings.port.to_string())
+        .arg("-r")
+        .arg(&remote)
+        .arg(&save_path)
+        .status()
+        .map_err(|e| format!("Не удалось запустить scp: {}", e))?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("scp завершился с ошибкой: {}", status))
+    }
+}
+  
 #[command]
 fn rename(old: String, new: String) -> Result<(), String> {
   // берём текущий рабочий каталог
@@ -314,7 +342,8 @@ fn main() {
       clear_all,
       df,
       upload_file,
-      download_and_save
+      download_and_save,
+      download_folder
     ])
     .run(tauri::generate_context!())
     .expect("error while running Tauri application");

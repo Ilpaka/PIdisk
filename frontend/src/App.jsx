@@ -229,29 +229,31 @@ export default function App() {
   };
 
   const handleRenameConfirm = async () => {
-       if (!renameTarget) return;
-       const oldName = renameTarget;
-       const newName = renameValue.trim();
-    
-       // сначала прячем инпут, чтобы он больше не рисовался
-       setRenameTarget(null);
-       setRenameValue("");
-    
-       // если имя действительно поменялось — шлём команду
-       if (newName && newName !== oldName) {
-         try {
-           await invoke("rename", { old: oldName, new: newName });
-           showSnackbar('Файл переименован!', 'success');
-           // чтобы обновилось дерево слева, если нужно
-           setCreatedFolder({ parentPath: currentPath, oldName, newName });
-         } catch (e) {
-           showSnackbar('Ошибка при переименование!', 'error');
-           setError(String(e));
-         }
-       }
-       // всегда обновляем файллист правой панели
-       await loadDirectory(currentPath);
-     };
+  if (!renameTarget) return;
+  const oldName = renameTarget;
+  const newName = renameValue.trim();
+
+  setRenameTarget(null);
+  setRenameValue("");
+
+  // Проверяем, есть ли такой файл/папка уже
+  if (newName && newName !== oldName) {
+    if (files.includes(newName)) {
+      showSnackbar("Файл или папка с таким именем уже есть!", "error");
+      return;
+    }
+    try {
+      await invoke("rename", { old: oldName, new: newName });
+      showSnackbar("Файл переименован!", "success");
+      setCreatedFolder({ parentPath: currentPath, oldName, newName });
+    } catch (e) {
+      showSnackbar("Ошибка при переименовании!", "error");
+      setError(String(e));
+    }
+  }
+  await loadDirectory(currentPath);
+};
+
 
   const handleNewFolder = async () => {
     handleClose();

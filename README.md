@@ -5,8 +5,8 @@
 PIdisk — это настольный клиент-менеджер файлов для **удалённого хранилища**, написанный на [Tauri](https://tauri.app) (Rust + Web). Приложение сочетает в себе минимальный размер дистрибутива, мгновенный запуск и отзывчивый интерфейс, сохраняя при этом удобство классического проводника.
 
 <p align="center">
-  <img src="docs/screenshots/grid.png" alt="Grid view" width="45%">
-  <img src="docs/screenshots/tree.png" alt="Folder tree" width="45%">
+  <img src="/screenshots/grid.png" alt="Grid view" width="45%">
+  <img src="/screenshots/tree.png" alt="Folder tree" width="45%">
 </p>
 
 ---
@@ -42,7 +42,7 @@ PIdisk — это настольный клиент-менеджер файло�
 
 ## Архитектура
 <p align="center">
-  <img src="docs/screenshots/arc.png" alt="Arcview">
+  <img src="/screenshots/arc.png" alt="Arcview">
 </p>
 
 ---
